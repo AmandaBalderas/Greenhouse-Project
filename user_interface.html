@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Invernadero</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('invernadero.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+        }
+        header {
+            background-color: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        .container {
+            margin-top: 30px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #000;
+            border: none;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+        }
+        .btn {
+            font-size: 0.9rem;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .chart-container {
+            max-width: 100%;
+            height: 300px;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(40, 167, 69, 0.9);
+            color: white;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Control Remoto del Invernadero</h1>
+    </header>
+    <div class="container">
+        <!-- Sistema de Irrigación -->
+        <div class="card">
+            <div class="card-header">Sistema de Irrigación</div>
+            <div class="card-body">
+                <button class="btn btn-success me-2" onclick="controlIrrigation('on')">Encender</button>
+                <button class="btn btn-danger" onclick="controlIrrigation('off')">Apagar</button>
+            </div>
+        </div>
+
+        <!-- Gráfica de Historial -->
+        <div class="card">
+            <div class="card-header">Historial de Datos</div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control de Temperatura -->
+        <div class="card">
+            <div class="card-header">Control de Temperatura</div>
+            <div class="card-body">
+                <div class="slider-container">
+                    <label for="temperature" class="form-label">Temperatura:</label>
+                    <input type="range" id="temperature" min="15" max="35" value="25" class="form-range" oninput="updateTemperature(this.value)">
+                    <span id="tempValue">25°C</span>
+                </div>
+            </div>
+        </div>
+
+<!-- Control de Ventilador -->
+<div class="card">
+    <div class="card-header">Control de Ventilador</div>
+    <div class="card-body">
+        <button class="btn btn-success me-2" onclick="controlFan('on')">Encender</button>
+        <button class="btn btn-danger" onclick="controlFan('off')">Apagar</button>
+    </div>
+</div>
+
+
+        <!-- Programación de Ciclos -->
+        <div class="card">
+            <div class="card-header">Programación de Ciclos</div>
+            <div class="card-body">
+                <label for="irrigationStart" class="form-label">Inicio del Riego:</label>
+                <input type="time" id="irrigationStart" class="form-control mb-3">
+                <label for="irrigationEnd" class="form-label">Fin del Riego:</label>
+                <input type="time" id="irrigationEnd" class="form-control mb-3">
+                <button class="btn btn-primary" onclick="setProgram()">Guardar Programación</button>
+            </div>
+        </div>
+
+        <!-- Información en tiempo real -->
+        <div class="card">
+            <div class="card-header">Datos en Tiempo Real</div>
+            <div class="card-body">
+                <p>Temperatura Actual: <span id="temperatureDisplay">--</span></p>
+                <p>Humedad Actual: <span id="humidityDisplay">--</span></p>
+                <p>Luz Actual: <span id="lightDisplay">--</span></p>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <p>Invernadero Inteligente - 2024</p>
+    </footer>
+
+    <script src="chart.js"></script>
+    <script>
+        // Configuración del WebSocket
+        const socket = new WebSocket('ws://192.168.1.254:8765'); // Cambia <IP_RASPBERRY> con la IP de tu Raspberry Pi
+
+        socket.onopen = () => {
+            console.log("Conexión WebSocket establecida");
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("Datos recibidos:", data);
+
+            // Actualizar valores en la página
+            document.getElementById('temperatureDisplay').innerText = `${data.temperature} °C`;
+            document.getElementById('humidityDisplay').innerText = `${data.humidity} %`;
+            document.getElementById('lightDisplay').innerText = `${data.light} lx`;
+        };
+
+        socket.onclose = () => {
+            console.log("Conexión WebSocket cerrada");
+        };
+
+        // Funciones de control
+        function controlIrrigation(action) {
+            socket.send(JSON.stringify({ action: "irrigation", value: action }));
+        }
+
+        function updateTemperature(value) {
+            document.getElementById('tempValue').innerText = `${value}°C`;
+            socket.send(JSON.stringify({ action: "set_temperature", value }));
+        }
+
+        function controlFan(action) {
+        socket.send(JSON.stringify({ action: "fan", value: action }));
+}
+
+
+        function setProgram() {
+            const irrigationStart = document.getElementById('irrigationStart').value;
+            const irrigationEnd = document.getElementById('irrigationEnd').value;
+            socket.send(JSON.stringify({ action: "set_program", start: irrigationStart, end: irrigationEnd }));
+            alert(`Programación enviada:\nInicio: ${irrigationStart}\nFin: ${irrigationEnd}`);
+        }
+    </script>
+</body>
+</html>
